@@ -1,0 +1,320 @@
+//@version=5
+//=============================================================================
+// Diele DRT Suite
+//=============================================================================
+//
+// Version : 2.0.0
+// Build   : 001
+//
+// Framework
+//
+//=============================================================================
+
+indicator(
+     title = "Diele DRT Suite",
+     shorttitle = "DRT",
+     overlay = true,
+     max_lines_count = 500,
+     max_labels_count = 500,
+     max_boxes_count = 500)
+
+//=============================================================================
+// GENERAL
+//=============================================================================
+
+groupGeneral = "General"
+
+htf = input.timeframe(
+     "60",
+     "CRT Timeframe",
+     group = groupGeneral)
+
+levelLength = input.int(
+     25,
+     "Level Length",
+     minval = 5,
+     maxval = 500,
+     group = groupGeneral)
+
+//=============================================================================
+// DISPLAY
+//=============================================================================
+
+groupDisplay = "Display"
+
+showCRT = input.bool(
+     true,
+     "Show CRT Levels",
+     group = groupDisplay)
+
+showOpen = input.bool(
+     true,
+     "Show Open",
+     group = groupDisplay)
+
+showMid = input.bool(
+     true,
+     "Show Mid",
+     group = groupDisplay)
+
+showLabels = input.bool(
+     true,
+     "Show Labels",
+     group = groupDisplay)
+
+showDashboard = input.bool(
+     true,
+     "Show Dashboard",
+     group = groupDisplay)
+
+//=============================================================================
+// STYLE
+//=============================================================================
+
+groupStyle = "Style"
+
+lineWidth = input.int(
+     2,
+     "Line Width",
+     minval = 1,
+     maxval = 5,
+     group = groupStyle)
+
+labelSize = input.string(
+     "Small",
+     "Label Size",
+     options = ["Tiny","Small","Normal"],
+     group = groupStyle)
+
+//=============================================================================
+// COLORS
+//=============================================================================
+
+groupColors = "Colors"
+
+clrHigh = input.color(
+     color.lime,
+     "CR High",
+     group = groupColors)
+
+clrLow = input.color(
+     color.red,
+     "CR Low",
+     group = groupColors)
+
+clrOpen = input.color(
+     color.orange,
+     "Open",
+     group = groupColors)
+
+clrMid = input.color(
+     color.aqua,
+     "Mid",
+     group = groupColors)
+
+clrBull = input.color(
+     color.lime,
+     "Bullish CRT",
+     group = groupColors)
+
+clrBear = input.color(
+     color.red,
+     "Bearish CRT",
+     group = groupColors)
+
+clrNeutral = input.color(
+     color.gray,
+     "Neutral",
+     group = groupColors)
+
+//=============================================================================
+// ENUMS
+//=============================================================================
+
+enum CRTState
+    WaitingC1
+    WaitingC2
+    Active
+
+enum CRTDirection
+    None
+    Bullish
+    Bearish
+    Both
+
+//=============================================================================
+// CRT STATE
+//=============================================================================
+
+var CRTState crtState = CRTState.WaitingC1
+var CRTDirection crtDirection = CRTDirection.None
+
+//=============================================================================
+// REFERENCE CANDLE (C1)
+//=============================================================================
+
+var float c1Open = na
+var float c1High = na
+var float c1Low = na
+var float c1Close = na
+
+var int c1HighBar = na
+var int c1LowBar = na
+
+//=============================================================================
+// VALIDATION CANDLE (C2)
+//=============================================================================
+
+var float c2Open = na
+var float c2High = na
+var float c2Low = na
+var float c2Close = na
+
+//=============================================================================
+// ACTIVE CRT
+//=============================================================================
+
+var float crHigh = na
+var float crLow = na
+var float crOpen = na
+var float crMid = na
+
+var int crHighBar = na
+var int crLowBar = na
+
+//=============================================================================
+// VALIDATION FLAGS
+//=============================================================================
+
+var bool bullSweep = false
+var bool bearSweep = false
+var bool closeInside = false
+
+//=============================================================================
+// HTF CACHE
+//=============================================================================
+
+var float htfOpen = na
+var float htfHigh = na
+var float htfLow = na
+var float htfClose = na
+
+//=============================================================================
+// DRAWING OBJECTS
+//=============================================================================
+
+var line lineHigh = na
+var line lineLow = na
+var line lineOpen = na
+var line lineMid = na
+
+var label lblHigh = na
+var label lblLow = na
+var label lblOpen = na
+var label lblMid = na
+
+//=============================================================================
+// DASHBOARD
+//=============================================================================
+
+var table dashboard = na
+
+//=============================================================================
+// RUNTIME
+//=============================================================================
+
+var bool newHTFBar = false
+
+//=============================================================================
+// HELPER FUNCTIONS
+//=============================================================================
+
+//-----------------------------------------------------------------------------
+// Mid Price
+//-----------------------------------------------------------------------------
+
+f_mid(_high, _low) =>
+    (_high + _low) * 0.5
+
+//-----------------------------------------------------------------------------
+// Bull Sweep
+//-----------------------------------------------------------------------------
+
+f_isBullSweep(_c1Low, _c2Low) =>
+    _c2Low < _c1Low
+
+//-----------------------------------------------------------------------------
+// Bear Sweep
+//-----------------------------------------------------------------------------
+
+f_isBearSweep(_c1High, _c2High) =>
+    _c2High > _c1High
+
+//-----------------------------------------------------------------------------
+// Close Inside
+//-----------------------------------------------------------------------------
+
+f_isCloseInside(_close, _high, _low) =>
+    _close <= _high and _close >= _low
+
+//-----------------------------------------------------------------------------
+// Current HTF OHLC
+//-----------------------------------------------------------------------------
+
+f_htfOpen() =>
+    request.security(syminfo.tickerid, htf, open)
+
+f_htfHigh() =>
+    request.security(syminfo.tickerid, htf, high)
+
+f_htfLow() =>
+    request.security(syminfo.tickerid, htf, low)
+
+f_htfClose() =>
+    request.security(syminfo.tickerid, htf, close)
+
+//-----------------------------------------------------------------------------
+// Previous Closed HTF OHLC
+//-----------------------------------------------------------------------------
+
+f_prevOpen() =>
+    request.security(syminfo.tickerid, htf, open[1])
+
+f_prevHigh() =>
+    request.security(syminfo.tickerid, htf, high[1])
+
+f_prevLow() =>
+    request.security(syminfo.tickerid, htf, low[1])
+
+f_prevClose() =>
+    request.security(syminfo.tickerid, htf, close[1])
+
+//-----------------------------------------------------------------------------
+// Label Size
+//-----------------------------------------------------------------------------
+
+f_labelSize() =>
+    labelSize == "Tiny" ? size.tiny :
+     labelSize == "Normal" ? size.normal :
+     size.small
+//=============================================================================
+// RUNTIME
+//=============================================================================
+
+// Detect start of a new Higher Timeframe candle
+newHTFBar := ta.change(time(htf))
+
+// Cache current Higher Timeframe values
+htfOpen := f_htfOpen()
+htfHigh := f_htfHigh()
+htfLow := f_htfLow()
+htfClose := f_htfClose()
+
+//=============================================================================
+// PLACEHOLDER
+//=============================================================================
+
+// The framework intentionally does not draw anything yet.
+// Drawing starts in Module v2.2.0
+
+plot(na, title = "Framework")

@@ -24,7 +24,19 @@ crtTF = input.timeframe("60", "CRT Timeframe", group = groupGeneral)
 showCRT = input.bool(true, "Show CRT", group = groupGeneral)
 
 showLabels = input.bool(true, "Show Labels", group = groupGeneral)
+//=============================================================================
+// STYLE
+//=============================================================================
 
+groupDrawing = "Drawing"
+
+levelLength = input.int(100, "Level Length", minval = 10, group = groupDrawing)
+
+lineWidth = input.int(2, "Line Width", minval = 1, maxval = 5, group = groupDrawing)
+
+lineExtension = input.int(8, "Line Extension", minval = 0, maxval = 50, group = groupDrawing)
+
+labelOffset = input.int(2, "Label Offset", minval = 0, maxval = 10, group = groupDrawing)
 //=============================================================================
 // COLORS
 //=============================================================================
@@ -39,12 +51,6 @@ clrMid  = input.color(color.gray, "CR Mid", group = groupColors)
 //=============================================================================
 // DRAWING SETTINGS
 //=============================================================================
-
-groupDrawing = "Drawing"
-
-levelLength = input.int(100, "Level Length", minval = 10, group = groupDrawing)
-
-lineWidth = input.int(2, "Line Width", minval = 1, maxval = 5, group = groupDrawing)
 
 //=============================================================================
 // END OF COMMIT 001
@@ -561,9 +567,12 @@ f_drawLabel(
     if na(price) or na(anchorBar)
         na
     else
+        int lineEnd = bar_index + levelLength + lineExtension
+
         label.new(
-             x = bar_index + levelLength,
+             x = bar_index + levelLength + lineExtension + labelOffset,
              y = price,
+             x2 = bar_index + levelLength + lineExtension,
              text = txt,
              xloc = xloc.bar_index,
              style = label.style_none,
@@ -586,16 +595,18 @@ f_drawLevel(
     if na(price) or na(anchorBar)
         na
     else
+        int lineEnd = bar_index + levelLength + lineExtension
+
         line.new(
-     x1 = anchorBar,
-     y1 = price,
-     x2 = anchorBar + levelLength,
-     y2 = price,
-     xloc = xloc.bar_index,
-     extend = extend.none,
-     color = lineColor,
-     style = line.style_solid,
-     width = lineWidth)
+             x1 = anchorBar,
+             y1 = price,
+             x2 = bar_index + levelLength + lineExtension,
+             y2 = price,
+             xloc = xloc.bar_index,
+             extend = extend.none,
+             color = lineColor,
+             style = line.style_solid,
+             width = lineWidth)
 //=============================================================================
 // DRAWING ENGINE
 //=============================================================================

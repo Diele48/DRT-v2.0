@@ -214,6 +214,7 @@ var float crMid  = na
 
 var int crHighBar = na
 var int crLowBar  = na
+var int crAnchorBar = na
 
 //-----------------------------------------------------------------------------
 // Validation
@@ -280,6 +281,9 @@ if newHTF
                 crHighBar := c1HighBar
                 crLowBar  := c1LowBar
 
+                // Unified CRT anchor
+                crAnchorBar := math.min(c1HighBar, c1LowBar)
+
                 if bullSweep and bearSweep
                     crtDirection := CRTDirection.Both
                 else if bullSweep
@@ -340,6 +344,7 @@ if newHTF and crtState == CRTState.Active
 
         crHighBar := na
         crLowBar  := na
+        crAnchorBar := na
 
         bullSweep := false
         bearSweep := false
@@ -369,6 +374,15 @@ var line lineCRHigh = na
 var line lineCROpen = na
 var line lineCRMid  = na
 var line lineCRLow  = na
+
+//=============================================================================
+// LABEL VARIABLES
+//=============================================================================
+
+var label lblCRHigh = na
+var label lblCROpen = na
+var label lblCRMid  = na
+var label lblCRLow  = na
 
 //=============================================================================
 // ENGINE DEBUG
@@ -513,6 +527,46 @@ f_drawLevel(
              extend = extend.none,
              color = lineColor,
              width = lineWidth)
+
+//=============================================================================
+// LINE STYLE HELPER
+//=============================================================================
+
+f_lineStyle(string style) =>
+    if style == "Solid"
+        line.style_solid
+    else if style == "Dashed"
+        line.style_dashed
+    else
+        line.style_dotted
+
+//=============================================================================
+// LABEL HELPER
+//=============================================================================
+
+f_drawLabel(
+    label lblRef,
+    int anchorBar,
+    float price,
+    string txt,
+    color txtColor) =>
+
+    if not na(lblRef)
+        label.delete(lblRef)
+
+    if na(price) or na(anchorBar)
+        na
+    else
+        label.new(
+             x = bar_index + levelLength,
+             y = price,
+             text = txt,
+             xloc = xloc.bar_index,
+             style = label.style_none,
+             textcolor = txtColor,
+             size = size.small)
+
+
 //=============================================================================
 // DRAWING ENGINE
 //=============================================================================
@@ -523,7 +577,7 @@ f_drawLevel(
 
 lineCRHigh := f_drawLevel(
      lineCRHigh,
-     crHighBar,
+     crAnchorBar,
      crHigh,
      clrHigh)
 
@@ -533,7 +587,7 @@ lineCRHigh := f_drawLevel(
 
 lineCROpen := f_drawLevel(
      lineCROpen,
-     crHighBar,
+     crAnchorBar,
      crOpen,
      clrOpen)
 
@@ -543,7 +597,7 @@ lineCROpen := f_drawLevel(
 
 lineCRMid := f_drawLevel(
      lineCRMid,
-     crHighBar,
+     crAnchorBar,
      crMid,
      clrMid)
 
@@ -553,6 +607,6 @@ lineCRMid := f_drawLevel(
 
 lineCRLow := f_drawLevel(
      lineCRLow,
-     crLowBar,
+     crAnchorBar,
      crLow,
      clrLow)

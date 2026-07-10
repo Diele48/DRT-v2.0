@@ -311,6 +311,148 @@ htfLow := f_htfLow()
 htfClose := f_htfClose()
 
 //=============================================================================
+// CRT ENGINE
+//=============================================================================
+
+// Detect start of a new HTF candle
+if newHTFBar
+
+    // Cache previous closed HTF candle.
+    c1Open := f_prevOpen()
+    c1High := f_prevHigh()
+    c1Low := f_prevLow()
+    c1Close := f_prevClose()
+
+    // Temporary anchor.
+    // Will be upgraded later to exact 5m anchor.
+    c1HighBar := bar_index
+    c1LowBar := bar_index
+
+    // Reset validation flags
+    bullSweep := false
+    bearSweep := false
+    closeInside := false
+    //-----------------------------------------------------------------------------
+// CRT STATE MACHINE
+//-----------------------------------------------------------------------------
+
+if newHTFBar
+
+    switch crtState
+
+        //---------------------------------------------------------------------
+        // WAITING FOR C1
+        //---------------------------------------------------------------------
+
+        CRTState.WaitingC1 =>
+
+            crtState := CRTState.WaitingC2
+
+        //---------------------------------------------------------------------
+        // WAITING FOR C2
+        //---------------------------------------------------------------------
+
+        CRTState.WaitingC2 =>
+
+            c2Open := f_prevOpen()
+            c2High := f_prevHigh()
+            c2Low := f_prevLow()
+            c2Close := f_prevClose()
+
+            bullSweep := f_isBullSweep(c1Low, c2Low)
+            bearSweep := f_isBearSweep(c1High, c2High)
+
+            closeInside := f_isCloseInside(c2Close, c1High, c1Low)
+
+            if closeInside
+                crtState := CRTState.Active
+            else
+                crtState := CRTState.WaitingC1
+
+        //-----------------------------------------------------------------------------
+// CRT ACTIVATION
+//-----------------------------------------------------------------------------
+
+if newHTFBar and crtState == CRTState.Active
+
+    // Activate CRT Levels
+    crHigh := c1High
+    crLow := c1Low
+    crOpen := c1Open
+    crMid := f_mid(crHigh, crLow)
+
+    // Temporary anchors
+    crHighBar := c1HighBar
+    crLowBar := c1LowBar
+
+    // Determine CRT Direction
+    if bullSweep and bearSweep
+        crtDirection := CRTDirection.Both
+    else if bullSweep
+        crtDirection := CRTDirection.Bullish
+    else if bearSweep
+        crtDirection := CRTDirection.Bearish
+    else
+        crtDirection := CRTDirection.None
+
+    //-----------------------------------------------------------------------------
+// CRT RESET ENGINE
+//-----------------------------------------------------------------------------
+
+if newHTFBar and crtState == CRTState.Active
+
+    htfClose := f_prevClose()
+
+    bool resetCRT = htfClose > crHigh or htfClose < crLow
+
+    if resetCRT
+
+        // Reset active CRT
+        crHigh := na
+        crLow := na
+        crOpen := na
+        crMid := na
+
+        crHighBar := na
+        crLowBar := na
+
+        bullSweep := false
+        bearSweep := false
+        closeInside := false
+
+        crtDirection := CRTDirection.None
+
+        // Start looking for a new CRT
+        crtState := CRTState.WaitingC1
+
+    //-----------------------------------------------------------------------------
+// CRT ENGINE FINAL
+//-----------------------------------------------------------------------------
+
+if newHTFBar
+
+    // When the previous CRT has been reset,
+    // immediately use the last closed HTF candle
+    // as the next Reference Candle (C1).
+
+    if crtState == CRTState.WaitingC1
+
+        c1Open := f_prevOpen()
+        c1High := f_prevHigh()
+        c1Low := f_prevLow()
+        c1Close := f_prevClose()
+
+        c1HighBar := bar_index
+        c1LowBar := bar_index
+
+        bullSweep := false
+        bearSweep := false
+        closeInside := false
+
+        crtDirection := CRTDirection.None
+
+        crtState := CRTState.WaitingC2
+//=============================================================================
 // PLACEHOLDER
 //=============================================================================
 

@@ -314,24 +314,8 @@ htfClose := f_htfClose()
 // CRT ENGINE
 //=============================================================================
 
-// Detect start of a new HTF candle
-if newHTFBar
 
-    // Cache previous closed HTF candle.
-    c1Open := f_prevOpen()
-    c1High := f_prevHigh()
-    c1Low := f_prevLow()
-    c1Close := f_prevClose()
-
-    // Temporary anchor.
-    // Will be upgraded later to exact 5m anchor.
-    c1HighBar := bar_index
-    c1LowBar := bar_index
-
-    // Reset validation flags
-    bullSweep := false
-    bearSweep := false
-    closeInside := false
+    
     //-----------------------------------------------------------------------------
 // CRT STATE MACHINE
 //-----------------------------------------------------------------------------
@@ -452,6 +436,264 @@ if newHTFBar
         crtDirection := CRTDirection.None
 
         crtState := CRTState.WaitingC2
+
+//=============================================================================
+// DRAWING HELPERS
+//=============================================================================
+
+f_drawLine(_line, _x1, _price, _color) =>
+
+    int x2 = _x1 + levelLength
+
+    if na(_line)
+
+        line.new(
+             x1 = _x1,
+             y1 = _price,
+             x2 = x2,
+             y2 = _price,
+             color = _color,
+             width = lineWidth)
+
+    else
+
+        line.set_xy1(_line, _x1, _price)
+        line.set_xy2(_line, x2, _price)
+
+        line.set_color(_line, _color)
+        line.set_width(_line, lineWidth)
+
+        _line
+
+
+
+f_drawLabel(_label, _x, _price, _text, _color) =>
+
+    if na(_label)
+
+        label.new(
+             x = _x,
+             y = _price,
+             text = _text,
+             style = label.style_none,
+             textcolor = _color,
+             size = f_labelSize())
+
+    else
+
+        label.set_xy(_label, _x, _price)
+
+        label.set_text(_label, _text)
+
+        label.set_textcolor(_label, _color)
+
+        _label
+
+//=============================================================================
+// DRAWING ENGINE
+//=============================================================================
+
+if showCRT
+
+    //---------------------------------------------------------------------
+    // CR HIGH
+    //---------------------------------------------------------------------
+
+    if crtState == CRTState.Active and not na(crHigh)
+
+        lineHigh := f_drawLine(
+             lineHigh,
+             crHighBar,
+             crHigh,
+             clrHigh)
+
+        if showLabels
+
+            lblHigh := f_drawLabel(
+                 lblHigh,
+                 crHighBar + levelLength,
+                 crHigh,
+                 "CR High",
+                 clrHigh)
+
+        else
+
+            if not na(lblHigh)
+
+                label.delete(lblHigh)
+                lblHigh := na
+
+    else
+
+        if not na(lineHigh)
+
+            line.delete(lineHigh)
+            lineHigh := na
+
+        if not na(lblHigh)
+
+            label.delete(lblHigh)
+            lblHigh := na
+
+    //---------------------------------------------------------------------
+    // CR LOW
+    //---------------------------------------------------------------------
+
+    if crtState == CRTState.Active and not na(crLow)
+
+        lineLow := f_drawLine(
+             lineLow,
+             crLowBar,
+             crLow,
+             clrLow)
+
+        if showLabels
+
+            lblLow := f_drawLabel(
+                 lblLow,
+                 crLowBar + levelLength,
+                 crLow,
+                 "CR Low",
+                 clrLow)
+
+        else
+
+            if not na(lblLow)
+
+                label.delete(lblLow)
+                lblLow := na
+
+    else
+
+        if not na(lineLow)
+
+            line.delete(lineLow)
+            lineLow := na
+
+        if not na(lblLow)
+
+            label.delete(lblLow)
+            lblLow := na
+    //---------------------------------------------------------------------
+    // CR OPEN
+    //---------------------------------------------------------------------
+
+    if showOpen and crtState == CRTState.Active and not na(crOpen)
+
+        lineOpen := f_drawLine(
+             lineOpen,
+             crHighBar,
+             crOpen,
+             clrOpen)
+
+        if showLabels
+
+            lblOpen := f_drawLabel(
+                 lblOpen,
+                 crHighBar + levelLength,
+                 crOpen,
+                 "Open",
+                 clrOpen)
+
+        else
+
+            if not na(lblOpen)
+
+                label.delete(lblOpen)
+                lblOpen := na
+
+    else
+
+        if not na(lineOpen)
+
+            line.delete(lineOpen)
+            lineOpen := na
+
+        if not na(lblOpen)
+
+            label.delete(lblOpen)
+            lblOpen := na
+    //---------------------------------------------------------------------
+    // CR MID
+    //---------------------------------------------------------------------
+
+    if showMid and crtState == CRTState.Active and not na(crMid)
+
+        lineMid := f_drawLine(
+             lineMid,
+             crHighBar,
+             crMid,
+             clrMid)
+
+        if showLabels
+
+            lblMid := f_drawLabel(
+                 lblMid,
+                 crHighBar + levelLength,
+                 crMid,
+                 "Mid",
+                 clrMid)
+
+        else
+
+            if not na(lblMid)
+
+                label.delete(lblMid)
+                lblMid := na
+
+    else
+
+        if not na(lineMid)
+
+            line.delete(lineMid)
+            lineMid := na
+
+        if not na(lblMid)
+
+            label.delete(lblMid)
+            lblMid := na
+
+else
+
+    if not na(lineHigh)
+
+        line.delete(lineHigh)
+        lineHigh := na
+
+    if not na(lineLow)
+
+        line.delete(lineLow)
+        lineLow := na
+
+    if not na(lineOpen)
+
+        line.delete(lineOpen)
+        lineOpen := na
+
+    if not na(lineMid)
+
+        line.delete(lineMid)
+        lineMid := na
+
+    if not na(lblHigh)
+
+        label.delete(lblHigh)
+        lblHigh := na
+
+    if not na(lblLow)
+
+        label.delete(lblLow)
+        lblLow := na
+
+    if not na(lblOpen)
+
+        label.delete(lblOpen)
+        lblOpen := na
+
+    if not na(lblMid)
+
+        label.delete(lblMid)
+        lblMid := na
 //=============================================================================
 // PLACEHOLDER
 //=============================================================================

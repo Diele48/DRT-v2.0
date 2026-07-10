@@ -245,8 +245,8 @@ if newHTF
             c1HighBar := htfHighBar
             c1LowBar  := htfLowBar
 
-            bullSweep  := false
-            bearSweep  := false
+            bullSweep := false
+            bearSweep := false
             closeInside := false
 
             crtState := CRTState.WaitingC2
@@ -268,35 +268,34 @@ if newHTF
 
             if closeInside
 
-    //---------------------------------------------------------
-    // Activate CRT
-    //---------------------------------------------------------
+                //---------------------------------------------------------
+                // Activate CRT
+                //---------------------------------------------------------
 
-    crHigh := c1High
-    crLow  := c1Low
-    crOpen := c1Open
-    crMid  := (crHigh + crLow) * 0.5
+                crHigh := c1High
+                crLow  := c1Low
+                crOpen := c1Open
+                crMid  := (crHigh + crLow) * 0.5
 
-    crHighBar := c1HighBar
-    crLowBar  := c1LowBar
+                crHighBar := c1HighBar
+                crLowBar  := c1LowBar
 
-    if bullSweep and bearSweep
-        crtDirection := CRTDirection.Both
-    else if bullSweep
-        crtDirection := CRTDirection.Bullish
-    else if bearSweep
-        crtDirection := CRTDirection.Bearish
-    else
-        crtDirection := CRTDirection.None
+                if bullSweep and bearSweep
+                    crtDirection := CRTDirection.Both
+                else if bullSweep
+                    crtDirection := CRTDirection.Bullish
+                else if bearSweep
+                    crtDirection := CRTDirection.Bearish
+                else
+                    crtDirection := CRTDirection.None
 
-    //---------------------------------------------------------
-    // Activate state
-    //---------------------------------------------------------
+                crtState := CRTState.Active
 
-    crtState := CRTState.Active
             else
-                // Setup mislukt.
-                // Laat de huidige afgesloten HTF direct de nieuwe C1 worden.
+
+                //---------------------------------------------------------
+                // Failed setup → current HTF becomes new C1
+                //---------------------------------------------------------
 
                 c1Open  := htfOpen
                 c1High  := htfHigh
@@ -306,41 +305,19 @@ if newHTF
                 c1HighBar := htfHighBar
                 c1LowBar  := htfLowBar
 
-                bullSweep  := false
-                bearSweep  := false
+                bullSweep := false
+                bearSweep := false
                 closeInside := false
 
                 crtState := CRTState.WaitingC2
 
+               //-----------------------------------------------------------------
+        // ACTIVE
+        //-----------------------------------------------------------------
 
-    //---------------------------------------------------------
-    // Activate CRT
-    //---------------------------------------------------------
-
-    crHigh := c1High
-    crLow  := c1Low
-    crOpen := c1Open
-    crMid  := (crHigh + crLow) * 0.5
-
-    //---------------------------------------------------------
-    // Anchors
-    //---------------------------------------------------------
-
-    crHighBar := c1HighBar
-    crLowBar  := c1LowBar
-
-    //---------------------------------------------------------
-    // Direction
-    //---------------------------------------------------------
-
-    if bullSweep and bearSweep
-        crtDirection := CRTDirection.Both
-    else if bullSweep
-        crtDirection := CRTDirection.Bullish
-    else if bearSweep
-        crtDirection := CRTDirection.Bearish
-    else
-        crtDirection := CRTDirection.None
+        CRTState.Active =>
+            na
+            // Reset is handled below.
 
 //=============================================================================
 // CRT RESET

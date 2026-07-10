@@ -1,0 +1,561 @@
+//@version=6
+indicator("Diele DRT Suite v3", overlay = true, max_lines_count = 500, max_labels_count = 500)
+
+//=============================================================================
+// DIELE DRT SUITE V3
+//=============================================================================
+
+// Version
+const string VERSION = "v3.0.0"
+
+//=============================================================================
+// INPUTS
+//=============================================================================
+
+groupGeneral = "General"
+
+crtTF = input.timeframe("60", "CRT Timeframe", group = groupGeneral)
+
+showCRT = input.bool(true, "Show CRT", group = groupGeneral)
+
+showLabels = input.bool(true, "Show Labels", group = groupGeneral)
+
+//=============================================================================
+// COLORS
+//=============================================================================
+
+groupColors = "Colors"
+
+clrHigh = input.color(color.red, "CR High", group = groupColors)
+clrLow  = input.color(color.aqua, "CR Low", group = groupColors)
+clrOpen = input.color(color.orange, "CR Open", group = groupColors)
+clrMid  = input.color(color.gray, "CR Mid", group = groupColors)
+
+//=============================================================================
+// DRAWING SETTINGS
+//=============================================================================
+
+groupDrawing = "Drawing"
+
+levelLength = input.int(100, "Level Length", minval = 10, group = groupDrawing)
+
+lineWidth = input.int(2, "Line Width", minval = 1, maxval = 5, group = groupDrawing)
+
+//=============================================================================
+// END OF COMMIT 001
+//=============================================================================
+//=============================================================================
+// HTF BUILDER
+//=============================================================================
+
+//-------------------------
+// Builder OHLC
+//-------------------------
+
+var float builderOpen  = na
+var float builderHigh  = na
+var float builderLow   = na
+var float builderClose = na
+
+//-------------------------
+// Builder Anchors
+//-------------------------
+
+var int builderHighBar = na
+var int builderLowBar  = na
+
+//-------------------------
+// Builder Time
+//-------------------------
+
+var int builderStartTime = na
+var int builderEndTime   = na
+
+//-------------------------
+// Completed HTF Candle
+//-------------------------
+
+var float htfOpen  = na
+var float htfHigh  = na
+var float htfLow   = na
+var float htfClose = na
+
+var int htfHighBar = na
+var int htfLowBar  = na
+
+var int htfStartTime = na
+var int htfEndTime   = na
+
+//-------------------------
+// HTF Detection
+//-------------------------
+
+bool newHTF = ta.change(time(crtTF)) != 0
+
+//=============================================================================
+// HTF BUILDER ENGINE
+//=============================================================================
+
+//---------------------------------------------------------------------
+// Initialisatie
+//---------------------------------------------------------------------
+
+if na(builderOpen)
+
+    builderOpen      := open
+    builderHigh      := high
+    builderLow       := low
+    builderClose     := close
+
+    builderHighBar   := bar_index
+    builderLowBar    := bar_index
+
+    builderStartTime := time
+    builderEndTime   := time
+
+//---------------------------------------------------------------------
+// Nieuwe HTF candle
+//---------------------------------------------------------------------
+
+else if newHTF
+
+    // Finalize vorige HTF candle
+
+    htfOpen      := builderOpen
+    htfHigh      := builderHigh
+    htfLow       := builderLow
+    htfClose     := builderClose
+
+    htfHighBar   := builderHighBar
+    htfLowBar    := builderLowBar
+
+    htfStartTime := builderStartTime
+    htfEndTime   := builderEndTime
+
+    // Start nieuwe Builder
+
+    builderOpen      := open
+    builderHigh      := high
+    builderLow       := low
+    builderClose     := close
+
+    builderHighBar   := bar_index
+    builderLowBar    := bar_index
+
+    builderStartTime := time
+    builderEndTime   := time
+
+//---------------------------------------------------------------------
+// Update huidige HTF candle
+//---------------------------------------------------------------------
+
+else
+
+    builderClose := close
+    builderEndTime := time
+
+    if high > builderHigh
+
+        builderHigh := high
+        builderHighBar := bar_index
+
+    if low < builderLow
+
+        builderLow := low
+        builderLowBar := bar_index
+
+//=============================================================================
+// CRT ENGINE
+//=============================================================================
+
+enum CRTState
+    WaitingC1
+    WaitingC2
+    Active
+
+enum CRTDirection
+    None
+    Bullish
+    Bearish
+    Both
+
+var CRTState crtState = CRTState.WaitingC1
+var CRTDirection crtDirection = CRTDirection.None
+
+//-----------------------------------------------------------------------------
+// C1
+//-----------------------------------------------------------------------------
+
+var float c1Open  = na
+var float c1High  = na
+var float c1Low   = na
+var float c1Close = na
+
+var int c1HighBar = na
+var int c1LowBar  = na
+
+//-----------------------------------------------------------------------------
+// C2
+//-----------------------------------------------------------------------------
+
+var float c2Open  = na
+var float c2High  = na
+var float c2Low   = na
+var float c2Close = na
+
+//-----------------------------------------------------------------------------
+// Active CRT
+//-----------------------------------------------------------------------------
+
+var float crHigh = na
+var float crLow  = na
+var float crOpen = na
+var float crMid  = na
+
+var int crHighBar = na
+var int crLowBar  = na
+
+//-----------------------------------------------------------------------------
+// Validation
+//-----------------------------------------------------------------------------
+
+var bool bullSweep  = false
+var bool bearSweep  = false
+var bool closeInside = false
+
+//=============================================================================
+// CRT STATE MACHINE
+//=============================================================================
+
+if newHTF
+
+    switch crtState
+
+        //-----------------------------------------------------------------
+        // WAITING FOR C1
+        //-----------------------------------------------------------------
+
+        CRTState.WaitingC1 =>
+
+            c1Open  := htfOpen
+            c1High  := htfHigh
+            c1Low   := htfLow
+            c1Close := htfClose
+
+            c1HighBar := htfHighBar
+            c1LowBar  := htfLowBar
+
+            bullSweep  := false
+            bearSweep  := false
+            closeInside := false
+
+            crtState := CRTState.WaitingC2
+
+        //-----------------------------------------------------------------
+        // WAITING FOR C2
+        //-----------------------------------------------------------------
+
+        CRTState.WaitingC2 =>
+
+            c2Open  := htfOpen
+            c2High  := htfHigh
+            c2Low   := htfLow
+            c2Close := htfClose
+
+            bullSweep  := c2Low < c1Low
+            bearSweep  := c2High > c1High
+            closeInside := c2Close <= c1High and c2Close >= c1Low
+
+            if closeInside
+                crtState := CRTState.Active
+            else
+                // Setup mislukt.
+                // Laat de huidige afgesloten HTF direct de nieuwe C1 worden.
+
+                c1Open  := htfOpen
+                c1High  := htfHigh
+                c1Low   := htfLow
+                c1Close := htfClose
+
+                c1HighBar := htfHighBar
+                c1LowBar  := htfLowBar
+
+                bullSweep  := false
+                bearSweep  := false
+                closeInside := false
+
+                crtState := CRTState.WaitingC2
+//=============================================================================
+// CRT ACTIVATION
+//=============================================================================
+
+if newHTF and crtState == CRTState.Active
+
+    //---------------------------------------------------------
+    // Activate CRT
+    //---------------------------------------------------------
+
+    crHigh := c1High
+    crLow  := c1Low
+    crOpen := c1Open
+    crMid  := (crHigh + crLow) * 0.5
+
+    //---------------------------------------------------------
+    // Anchors
+    //---------------------------------------------------------
+
+    crHighBar := c1HighBar
+    crLowBar  := c1LowBar
+
+    //---------------------------------------------------------
+    // Direction
+    //---------------------------------------------------------
+
+    if bullSweep and bearSweep
+        crtDirection := CRTDirection.Both
+    else if bullSweep
+        crtDirection := CRTDirection.Bullish
+    else if bearSweep
+        crtDirection := CRTDirection.Bearish
+    else
+        crtDirection := CRTDirection.None
+
+//=============================================================================
+// CRT RESET
+//=============================================================================
+
+if newHTF and crtState == CRTState.Active
+
+    bool resetCRT = htfClose > crHigh or htfClose < crLow
+
+    if resetCRT
+
+        //---------------------------------------------------------
+        // Clear active CRT
+        //---------------------------------------------------------
+
+        crHigh := na
+        crLow  := na
+        crOpen := na
+        crMid  := na
+
+        crHighBar := na
+        crLowBar  := na
+
+        bullSweep := false
+        bearSweep := false
+        closeInside := false
+
+        crtDirection := CRTDirection.None
+
+        //---------------------------------------------------------
+        // Latest completed HTF becomes new C1
+        //---------------------------------------------------------
+
+        c1Open  := htfOpen
+        c1High  := htfHigh
+        c1Low   := htfLow
+        c1Close := htfClose
+
+        c1HighBar := htfHighBar
+        c1LowBar  := htfLowBar
+
+        crtState := CRTState.WaitingC2
+
+//=============================================================================
+// DRAWING VARIABLES
+//=============================================================================
+
+var line lineCRHigh = na
+var line lineCROpen = na
+var line lineCRMid  = na
+var line lineCRLow  = na
+
+//=============================================================================
+// ENGINE DEBUG
+//=============================================================================
+
+var table dbg = table.new(position.top_right, 2, 18, border_width = 1)
+
+if barstate.islast
+
+    //---------------------------------------------------------
+    // Header
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 0, "Diele DRT v3")
+    table.cell(dbg, 1, 0, VERSION)
+
+    //---------------------------------------------------------
+    // CRT STATE
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 1, "CRT State")
+
+    string stateTxt =
+         crtState == CRTState.WaitingC1 ? "Waiting C1" :
+         crtState == CRTState.WaitingC2 ? "Waiting C2" :
+         "Active"
+
+    table.cell(dbg, 1, 1, stateTxt)
+
+    //---------------------------------------------------------
+    // Direction
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 2, "Direction")
+
+    string dirTxt =
+         crtDirection == CRTDirection.None ? "None" :
+         crtDirection == CRTDirection.Bullish ? "Bullish" :
+         crtDirection == CRTDirection.Bearish ? "Bearish" :
+         "Both"
+
+    table.cell(dbg, 1, 2, dirTxt)
+
+    //---------------------------------------------------------
+    // Builder
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 3, "Builder High")
+    table.cell(dbg, 1, 3, str.tostring(builderHigh))
+
+    table.cell(dbg, 0, 4, "Builder Low")
+    table.cell(dbg, 1, 4, str.tostring(builderLow))
+
+    //---------------------------------------------------------
+    // Completed HTF
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 5, "HTF High")
+    table.cell(dbg, 1, 5, str.tostring(htfHigh))
+
+    table.cell(dbg, 0, 6, "HTF Low")
+    table.cell(dbg, 1, 6, str.tostring(htfLow))
+
+    //---------------------------------------------------------
+    // Active CRT
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 7, "CR High")
+    table.cell(dbg, 1, 7, str.tostring(crHigh))
+
+    table.cell(dbg, 0, 8, "CR Low")
+    table.cell(dbg, 1, 8, str.tostring(crLow))
+
+    //---------------------------------------------------------
+    // CRT Anchors
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 9, "CR High Bar")
+    table.cell(dbg, 1, 9, str.tostring(crHighBar))
+
+    table.cell(dbg, 0, 10, "CR Low Bar")
+    table.cell(dbg, 1, 10, str.tostring(crLowBar))
+
+    //---------------------------------------------------------
+    // HTF Anchors
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 11, "HTF High Bar")
+    table.cell(dbg, 1, 11, str.tostring(htfHighBar))
+
+    table.cell(dbg, 0, 12, "HTF Low Bar")
+    table.cell(dbg, 1, 12, str.tostring(htfLowBar))
+
+    //---------------------------------------------------------
+    // C1 Anchors
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 13, "C1 High Bar")
+    table.cell(dbg, 1, 13, str.tostring(c1HighBar))
+
+    table.cell(dbg, 0, 14, "C1 Low Bar")
+    table.cell(dbg, 1, 14, str.tostring(c1LowBar))
+
+    //---------------------------------------------------------
+    // Builder Anchors
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 15, "Builder High Bar")
+    table.cell(dbg, 1, 15, str.tostring(builderHighBar))
+
+    table.cell(dbg, 0, 16, "Builder Low Bar")
+    table.cell(dbg, 1, 16, str.tostring(builderLowBar))
+
+    //---------------------------------------------------------
+    // Version
+    //---------------------------------------------------------
+
+    table.cell(dbg, 0, 17, "Version")
+    table.cell(dbg, 1, 17, VERSION)
+//=============================================================================
+// DRAWING HELPER
+//=============================================================================
+
+f_drawLevel(
+    line lineRef,
+    int anchorBar,
+    float price,
+    color lineColor) =>
+
+    if not na(lineRef)
+        line.delete(lineRef)
+
+    if na(price) or na(anchorBar)
+        na
+    else
+        line.new(
+             x1 = anchorBar,
+             y1 = price,
+             x2 = bar_index + levelLength,
+             y2 = price,
+             xloc = xloc.bar_index,
+             extend = extend.none,
+             color = lineColor,
+             width = lineWidth)
+//=============================================================================
+// DRAWING ENGINE
+//=============================================================================
+
+if barstate.islast
+
+    //---------------------------------------------------------------------
+    // CR HIGH
+    //---------------------------------------------------------------------
+
+    lineCRHigh := f_drawLevel(
+         lineCRHigh,
+         crHighBar,
+         crHigh,
+         clrHigh)
+
+    //---------------------------------------------------------------------
+    // CR OPEN
+    //---------------------------------------------------------------------
+
+    lineCROpen := f_drawLevel(
+         lineCROpen,
+         crHighBar,
+         crOpen,
+         clrOpen)
+
+    //---------------------------------------------------------------------
+    // CR MID
+    //---------------------------------------------------------------------
+
+    lineCRMid := f_drawLevel(
+         lineCRMid,
+         crHighBar,
+         crMid,
+         clrMid)
+
+    //---------------------------------------------------------------------
+    // CR LOW
+    //---------------------------------------------------------------------
+
+    lineCRLow := f_drawLevel(
+         lineCRLow,
+         crLowBar,
+         crLow,
+         clrLow)

@@ -526,6 +526,7 @@ f_drawLevel(
              xloc = xloc.bar_index,
              extend = extend.none,
              color = lineColor,
+             style = line.style_solid,
              width = lineWidth)
 
 //=============================================================================
@@ -581,6 +582,16 @@ lineCRHigh := f_drawLevel(
      crHigh,
      clrHigh)
 
+if not na(lineCRHigh)
+    line.set_style(lineCRHigh, line.style_solid)
+
+lblCRHigh := f_drawLabel(
+     lblCRHigh,
+     crAnchorBar,
+     crHigh,
+     "CR High",
+     clrHigh)
+
 //---------------------------------------------------------------------
 // CR OPEN
 //---------------------------------------------------------------------
@@ -591,14 +602,34 @@ lineCROpen := f_drawLevel(
      crOpen,
      clrOpen)
 
+if not na(lineCROpen)
+    line.set_style(lineCROpen, line.style_dotted)
+
+lblCROpen := f_drawLabel(
+     lblCROpen,
+     crAnchorBar,
+     crOpen,
+     "CR Open",
+     clrOpen)
+
 //---------------------------------------------------------------------
-// CR MID
+// CE
 //---------------------------------------------------------------------
 
 lineCRMid := f_drawLevel(
      lineCRMid,
      crAnchorBar,
      crMid,
+     clrMid)
+
+if not na(lineCRMid)
+    line.set_style(lineCRMid, line.style_dashed)
+
+lblCRMid := f_drawLabel(
+     lblCRMid,
+     crAnchorBar,
+     crMid,
+     "CE",
      clrMid)
 
 //---------------------------------------------------------------------
@@ -609,4 +640,14 @@ lineCRLow := f_drawLevel(
      lineCRLow,
      crAnchorBar,
      crLow,
+     clrLow)
+
+if not na(lineCRLow)
+    line.set_style(lineCRLow, line.style_solid)
+
+lblCRLow := f_drawLabel(
+     lblCRLow,
+     crAnchorBar,
+     crLow,
+     "CR Low",
      clrLow)

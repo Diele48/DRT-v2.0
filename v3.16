@@ -1,12 +1,17 @@
 //@version=6
-indicator("Diele DRT Suite v3", overlay = true, max_lines_count = 500, max_labels_count = 500)
+indicator(
+    "Diele DRT Suite v3",
+    overlay = true,
+    scale = scale.right,
+    max_lines_count = 500,
+    max_labels_count = 500)
 
 //=============================================================================
 // DIELE DRT SUITE V3
 //=============================================================================
 
 // Version
-const string VERSION = "v3.0.0"
+const string VERSION = "v3.22"
 
 //=============================================================================
 // INPUTS
@@ -408,7 +413,9 @@ var label lblCRLow  = na
 // ENGINE DEBUG
 //=============================================================================
 
-var table dbg = table.new(position.top_right, 2, 18, border_width = 1)
+plotchar(crAnchorBar, "Anchor", "")
+
+var table dbg = table.new(position.top_right, 2, 20, border_width = 1)
 
 if barstate.islast
 
@@ -522,33 +529,9 @@ if barstate.islast
 
     table.cell(dbg, 0, 17, "Version")
     table.cell(dbg, 1, 17, VERSION)
-//=============================================================================
-// DRAWING HELPER
-//=============================================================================
 
-f_drawLevel(
-    line lineRef,
-    int anchorBar,
-    float price,
-    color lineColor) =>
-
-    if not na(lineRef)
-        line.delete(lineRef)
-
-    if na(price) or na(anchorBar)
-        na
-    else
-        line.new(
-             x1 = anchorBar,
-             y1 = price,
-             x2 = bar_index + levelLength,
-             y2 = price,
-             xloc = xloc.bar_index,
-             extend = extend.none,
-             color = lineColor,
-             style = line.style_solid,
-             width = lineWidth)
-
+    table.cell(dbg, 0, 19, "CR Anchor")
+    table.cell(dbg, 1, 19, str.tostring(crAnchorBar))
 //=============================================================================
 // LINE STYLE HELPER
 //=============================================================================
@@ -587,7 +570,32 @@ f_drawLabel(
              textcolor = txtColor,
              size = size.small)
 
+//=============================================================================
+// DRAWING HELPER
+//=============================================================================
 
+f_drawLevel(
+    line lineRef,
+    int anchorBar,
+    float price,
+    color lineColor) =>
+
+    if not na(lineRef)
+        line.delete(lineRef)
+
+    if na(price) or na(anchorBar)
+        na
+    else
+        line.new(
+     x1 = anchorBar,
+     y1 = price,
+     x2 = anchorBar + levelLength,
+     y2 = price,
+     xloc = xloc.bar_index,
+     extend = extend.none,
+     color = lineColor,
+     style = line.style_solid,
+     width = lineWidth)
 //=============================================================================
 // DRAWING ENGINE
 //=============================================================================

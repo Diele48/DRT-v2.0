@@ -212,9 +212,20 @@ var float crLow  = na
 var float crOpen = na
 var float crMid  = na
 
-var int crHighBar = na
-var int crLowBar  = na
+var int crHighBar   = na
+var int crLowBar    = na
 var int crAnchorBar = na
+
+//-----------------------------------------------------------------------------
+// Previous CRT
+//-----------------------------------------------------------------------------
+
+var float prevCRHigh = na
+var float prevCRLow  = na
+var float prevCROpen = na
+var float prevCRMid  = na
+
+var int prevCRAnchorBar = na
 
 //-----------------------------------------------------------------------------
 // Validation
@@ -352,6 +363,8 @@ if newHTF and crtState == CRTState.Active
 
         crtDirection := CRTDirection.None
 
+
+
         //---------------------------------------------------------
         // Latest completed HTF becomes new C1
         //---------------------------------------------------------
@@ -374,6 +387,13 @@ var line lineCRHigh = na
 var line lineCROpen = na
 var line lineCRMid  = na
 var line lineCRLow  = na
+
+// Previous CRT
+
+var line linePrevCRHigh = na
+var line linePrevCROpen = na
+var line linePrevCRMid  = na
+var line linePrevCRLow  = na
 
 //=============================================================================
 // LABEL VARIABLES
@@ -651,3 +671,42 @@ lblCRLow := f_drawLabel(
      crLow,
      "CR Low",
      clrLow)
+ //---------------------------------------------------------------------
+// PREVIOUS CRT
+//---------------------------------------------------------------------
+
+linePrevCRHigh := f_drawLevel(
+     linePrevCRHigh,
+     prevCRAnchorBar,
+     prevCRHigh,
+     color.gray)
+
+if not na(linePrevCRHigh)
+    line.set_style(linePrevCRHigh, line.style_solid)
+
+linePrevCROpen := f_drawLevel(
+     linePrevCROpen,
+     prevCRAnchorBar,
+     prevCROpen,
+     color.gray)
+
+if not na(linePrevCROpen)
+    line.set_style(linePrevCROpen, line.style_dotted)
+
+linePrevCRMid := f_drawLevel(
+     linePrevCRMid,
+     prevCRAnchorBar,
+     prevCRMid,
+     color.gray)
+
+if not na(linePrevCRMid)
+    line.set_style(linePrevCRMid, line.style_dashed)
+
+linePrevCRLow := f_drawLevel(
+     linePrevCRLow,
+     prevCRAnchorBar,
+     prevCRLow,
+     color.gray)
+
+if not na(linePrevCRLow)
+    line.set_style(linePrevCRLow, line.style_solid)

@@ -267,7 +267,33 @@ if newHTF
             closeInside := c2Close <= c1High and c2Close >= c1Low
 
             if closeInside
-                crtState := CRTState.Active
+
+    //---------------------------------------------------------
+    // Activate CRT
+    //---------------------------------------------------------
+
+    crHigh := c1High
+    crLow  := c1Low
+    crOpen := c1Open
+    crMid  := (crHigh + crLow) * 0.5
+
+    crHighBar := c1HighBar
+    crLowBar  := c1LowBar
+
+    if bullSweep and bearSweep
+        crtDirection := CRTDirection.Both
+    else if bullSweep
+        crtDirection := CRTDirection.Bullish
+    else if bearSweep
+        crtDirection := CRTDirection.Bearish
+    else
+        crtDirection := CRTDirection.None
+
+    //---------------------------------------------------------
+    // Activate state
+    //---------------------------------------------------------
+
+    crtState := CRTState.Active
             else
                 // Setup mislukt.
                 // Laat de huidige afgesloten HTF direct de nieuwe C1 worden.
@@ -285,11 +311,7 @@ if newHTF
                 closeInside := false
 
                 crtState := CRTState.WaitingC2
-//=============================================================================
-// CRT ACTIVATION
-//=============================================================================
 
-if newHTF and crtState == CRTState.Active
 
     //---------------------------------------------------------
     // Activate CRT
@@ -518,44 +540,42 @@ f_drawLevel(
 // DRAWING ENGINE
 //=============================================================================
 
-if barstate.islast
+//---------------------------------------------------------------------
+// CR HIGH
+//---------------------------------------------------------------------
 
-    //---------------------------------------------------------------------
-    // CR HIGH
-    //---------------------------------------------------------------------
+lineCRHigh := f_drawLevel(
+     lineCRHigh,
+     crHighBar,
+     crHigh,
+     clrHigh)
 
-    lineCRHigh := f_drawLevel(
-         lineCRHigh,
-         crHighBar,
-         crHigh,
-         clrHigh)
+//---------------------------------------------------------------------
+// CR OPEN
+//---------------------------------------------------------------------
 
-    //---------------------------------------------------------------------
-    // CR OPEN
-    //---------------------------------------------------------------------
+lineCROpen := f_drawLevel(
+     lineCROpen,
+     crHighBar,
+     crOpen,
+     clrOpen)
 
-    lineCROpen := f_drawLevel(
-         lineCROpen,
-         crHighBar,
-         crOpen,
-         clrOpen)
+//---------------------------------------------------------------------
+// CR MID
+//---------------------------------------------------------------------
 
-    //---------------------------------------------------------------------
-    // CR MID
-    //---------------------------------------------------------------------
+lineCRMid := f_drawLevel(
+     lineCRMid,
+     crHighBar,
+     crMid,
+     clrMid)
 
-    lineCRMid := f_drawLevel(
-         lineCRMid,
-         crHighBar,
-         crMid,
-         clrMid)
+//---------------------------------------------------------------------
+// CR LOW
+//---------------------------------------------------------------------
 
-    //---------------------------------------------------------------------
-    // CR LOW
-    //---------------------------------------------------------------------
-
-    lineCRLow := f_drawLevel(
-         lineCRLow,
-         crLowBar,
-         crLow,
-         clrLow)
+lineCRLow := f_drawLevel(
+     lineCRLow,
+     crLowBar,
+     crLow,
+     clrLow)

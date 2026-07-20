@@ -278,6 +278,11 @@ var ReactionState reactionState = ReactionState.None
 
 var bool insideCRT = false
 
+var float insideParentHigh = na
+var float insideParentLow  = na
+
+var int insideDepth = 0
+
 //=============================================================================
 // CRT STATE MACHINE
 //=============================================================================
@@ -370,6 +375,21 @@ if newHTF
                     crtDirection := CRTDirection.Bearish
                 else
                     crtDirection := CRTDirection.None
+                //---------------------------------------------------------
+                // Inside CRT Detection
+                //---------------------------------------------------------
+
+                insideCRT := false
+                insideDepth := 0
+
+                if not na(prevCRHigh) and not na(prevCRLow)
+
+                    if crHigh <= prevCRHigh and crLow >= prevCRLow
+
+                        insideCRT := true
+                        insideParentHigh := prevCRHigh
+                        insideParentLow  := prevCRLow
+                        insideDepth := 1
 
                 crtState := CRTState.Active
 
@@ -720,7 +740,7 @@ if crtState == CRTState.Active
 
 plotchar(crAnchorBar, "Anchor", "")
 
-var table dbg = table.new(position.top_right, 2, 23, border_width = 1)
+var table dbg = table.new(position.top_right, 2, 25, border_width = 1)
 
 if barstate.islast
 
@@ -850,3 +870,13 @@ table.cell(dbg, 1, 21, str.tostring(touchCE))
 
 table.cell(dbg, 0, 22, "Touch Low")
 table.cell(dbg, 1, 22, str.tostring(touchCRLow))
+
+//---------------------------------------------------------
+// Inside CRT
+//---------------------------------------------------------
+
+table.cell(dbg, 0, 23, "Inside CRT")
+table.cell(dbg, 1, 23, str.tostring(insideCRT))
+
+table.cell(dbg, 0, 24, "Inside Depth")
+table.cell(dbg, 1, 24, str.tostring(insideDepth))

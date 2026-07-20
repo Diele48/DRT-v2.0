@@ -249,6 +249,30 @@ var bool touchCE     = false
 var bool touchCRLow  = false
 
 //-----------------------------------------------------------------------------
+// Touch Sequence
+//-----------------------------------------------------------------------------
+
+enum TouchSequence
+    None
+    High
+    CE
+    Low
+
+var TouchSequence firstTouch = TouchSequence.None
+
+//-----------------------------------------------------------------------------
+// Reaction State
+//-----------------------------------------------------------------------------
+
+enum ReactionState
+    None
+    Waiting
+    Confirmed
+    Failed
+
+var ReactionState reactionState = ReactionState.None
+
+//-----------------------------------------------------------------------------
 // Inside CRT
 //-----------------------------------------------------------------------------
 
@@ -276,8 +300,8 @@ if newHTF
             c1HighBar := htfHighBar
             c1LowBar  := htfLowBar
 
-            bullSweep := false
-            bearSweep := false
+            bullSweep   := false
+            bearSweep   := false
             closeInside := false
 
             crtState := CRTState.WaitingC2
@@ -293,11 +317,21 @@ if newHTF
             c2Low   := htfLow
             c2Close := htfClose
 
-            bullSweep  := c2Low < c1Low
-            bearSweep  := c2High > c1High
+            bullSweep   := c2Low < c1Low
+            bearSweep   := c2High > c1High
             closeInside := c2Close <= c1High and c2Close >= c1Low
 
             if closeInside
+
+                //---------------------------------------------------------
+                // Store Previous CRT
+                //---------------------------------------------------------
+
+                prevCRHigh      := crHigh
+                prevCRLow       := crLow
+                prevCROpen      := crOpen
+                prevCRMid       := crMid
+                prevCRAnchorBar := crAnchorBar
 
                 //---------------------------------------------------------
                 // Activate CRT
@@ -311,16 +345,22 @@ if newHTF
                 crHighBar := c1HighBar
                 crLowBar  := c1LowBar
 
-                // Unified CRT anchor
                 crAnchorBar := math.min(c1HighBar, c1LowBar)
 
                 //---------------------------------------------------------
-                // Reset Touch State
+                // Reset Touch & Reaction State
                 //---------------------------------------------------------
 
-                touchCRHigh := false
-                touchCE     := false
-                touchCRLow  := false
+                touchCRHigh  := false
+                touchCE      := false
+                touchCRLow   := false
+
+                firstTouch   := TouchSequence.None
+                reactionState := ReactionState.None
+
+                //---------------------------------------------------------
+                // CRT Direction
+                //---------------------------------------------------------
 
                 if bullSweep and bearSweep
                     crtDirection := CRTDirection.Both
@@ -332,10 +372,11 @@ if newHTF
                     crtDirection := CRTDirection.None
 
                 crtState := CRTState.Active
+
             else
 
                 //---------------------------------------------------------
-                // Failed setup → current HTF becomes new C1
+                // Failed setup -> current HTF becomes new C1
                 //---------------------------------------------------------
 
                 c1Open  := htfOpen
@@ -346,19 +387,18 @@ if newHTF
                 c1HighBar := htfHighBar
                 c1LowBar  := htfLowBar
 
-                bullSweep := false
-                bearSweep := false
+                bullSweep   := false
+                bearSweep   := false
                 closeInside := false
 
                 crtState := CRTState.WaitingC2
 
-               //-----------------------------------------------------------------
+        //-----------------------------------------------------------------
         // ACTIVE
         //-----------------------------------------------------------------
 
         CRTState.Active =>
             na
-            // Reset is handled below.
 
 //---------------------------------------------------------
 // Inside CRT Detection
@@ -454,6 +494,225 @@ var label lblCRHigh = na
 var label lblCROpen = na
 var label lblCRMid  = na
 var label lblCRLow  = na
+
+
+//=============================================================================
+// LINE STYLE HELPER
+//=============================================================================
+
+f_lineStyle(string style) =>
+    if style == "Solid"
+        line.style_solid
+    else if style == "Dashed"
+        line.style_dashed
+    else
+        line.style_dotted
+
+//=============================================================================
+// LABEL HELPER
+//=============================================================================
+
+f_drawLabel(
+    label lblRef,
+    int anchorBar,
+    float price,
+    string txt,
+    color txtColor) =>
+
+    if not na(lblRef)
+        label.delete(lblRef)
+
+    if na(price) or na(anchorBar)
+        na
+    else
+        label.new(
+             x = bar_index + levelLength,
+             y = price,
+             text = txt,
+             xloc = xloc.bar_index,
+             style = label.style_none,
+             textcolor = txtColor,
+             size = size.small)
+
+//=============================================================================
+// DRAWING HELPER
+//=============================================================================
+
+f_drawLevel(
+    line lineRef,
+    int anchorBar,
+    float price,
+    color lineColor) =>
+
+    if not na(lineRef)
+        line.delete(lineRef)
+
+    if na(price) or na(anchorBar)
+        na
+    else if (bar_index - anchorBar) > 450
+        na
+    else
+        line.new(
+            x1 = anchorBar,
+            y1 = price,
+            x2 = bar_index + levelLength,
+            y2 = price,
+            xloc = xloc.bar_index,
+            extend = extend.none,
+            color = lineColor,
+            style = line.style_solid,
+            width = lineWidth)
+//=============================================================================
+// DRAWING ENGINE
+//=============================================================================
+
+//---------------------------------------------------------------------
+// CR HIGH
+//---------------------------------------------------------------------
+
+lineCRHigh := f_drawLevel(
+     lineCRHigh,
+     crAnchorBar,
+     crHigh,
+     clrHigh)
+
+if not na(lineCRHigh)
+    line.set_style(lineCRHigh, line.style_solid)
+
+lblCRHigh := f_drawLabel(
+     lblCRHigh,
+     crAnchorBar,
+     crHigh,
+     "CR High",
+     clrHigh)
+
+//---------------------------------------------------------------------
+// CR OPEN
+//---------------------------------------------------------------------
+
+lineCROpen := f_drawLevel(
+     lineCROpen,
+     crAnchorBar,
+     crOpen,
+     clrOpen)
+
+if not na(lineCROpen)
+    line.set_style(lineCROpen, line.style_dotted)
+
+lblCROpen := f_drawLabel(
+     lblCROpen,
+     crAnchorBar,
+     crOpen,
+     "CR Open",
+     clrOpen)
+
+//---------------------------------------------------------------------
+// CE
+//---------------------------------------------------------------------
+
+lineCRMid := f_drawLevel(
+     lineCRMid,
+     crAnchorBar,
+     crMid,
+     clrMid)
+
+if not na(lineCRMid)
+    line.set_style(lineCRMid, line.style_dashed)
+
+lblCRMid := f_drawLabel(
+     lblCRMid,
+     crAnchorBar,
+     crMid,
+     "CE",
+     clrMid)
+
+//---------------------------------------------------------------------
+// CR LOW
+//---------------------------------------------------------------------
+
+lineCRLow := f_drawLevel(
+     lineCRLow,
+     crAnchorBar,
+     crLow,
+     clrLow)
+
+if not na(lineCRLow)
+    line.set_style(lineCRLow, line.style_solid)
+
+lblCRLow := f_drawLabel(
+     lblCRLow,
+     crAnchorBar,
+     crLow,
+     "CR Low",
+     clrLow)
+
+
+//---------------------------------------------------------------------
+// PREVIOUS CRT
+//---------------------------------------------------------------------
+
+linePrevCRHigh := f_drawLevel(
+     linePrevCRHigh,
+     prevCRAnchorBar,
+     prevCRHigh,
+     color.gray)
+
+if not na(linePrevCRHigh)
+    line.set_style(linePrevCRHigh, line.style_solid)
+
+linePrevCROpen := f_drawLevel(
+     linePrevCROpen,
+     prevCRAnchorBar,
+     prevCROpen,
+     color.gray)
+
+if not na(linePrevCROpen)
+    line.set_style(linePrevCROpen, line.style_dotted)
+
+linePrevCRMid := f_drawLevel(
+     linePrevCRMid,
+     prevCRAnchorBar,
+     prevCRMid,
+     color.gray)
+
+if not na(linePrevCRMid)
+    line.set_style(linePrevCRMid, line.style_dashed)
+
+linePrevCRLow := f_drawLevel(
+     linePrevCRLow,
+     prevCRAnchorBar,
+     prevCRLow,
+     color.gray)
+
+if not na(linePrevCRLow)
+    line.set_style(linePrevCRLow, line.style_solid)
+
+//=============================================================================
+// TOUCH ENGINE
+//=============================================================================
+
+if crtState == CRTState.Active
+
+    //---------------------------------------------------------
+    // CR High
+    //---------------------------------------------------------
+
+    if not touchCRHigh
+        touchCRHigh := high >= crHigh
+
+    //---------------------------------------------------------
+    // CE
+    //---------------------------------------------------------
+
+    if not touchCE
+        touchCE := high >= crMid and low <= crMid
+
+    //---------------------------------------------------------
+    // CR Low
+    //---------------------------------------------------------
+
+    if not touchCRLow
+        touchCRLow := low <= crLow
 
 //=============================================================================
 // ENGINE DEBUG
@@ -591,243 +850,3 @@ table.cell(dbg, 1, 21, str.tostring(touchCE))
 
 table.cell(dbg, 0, 22, "Touch Low")
 table.cell(dbg, 1, 22, str.tostring(touchCRLow))
-//=============================================================================
-// LINE STYLE HELPER
-//=============================================================================
-
-f_lineStyle(string style) =>
-    if style == "Solid"
-        line.style_solid
-    else if style == "Dashed"
-        line.style_dashed
-    else
-        line.style_dotted
-
-//=============================================================================
-// LABEL HELPER
-//=============================================================================
-
-f_drawLabel(
-    label lblRef,
-    int anchorBar,
-    float price,
-    string txt,
-    color txtColor) =>
-
-    if not na(lblRef)
-        label.delete(lblRef)
-
-    if na(price) or na(anchorBar)
-        na
-    else
-        label.new(
-             x = bar_index + levelLength,
-             y = price,
-             text = txt,
-             xloc = xloc.bar_index,
-             style = label.style_none,
-             textcolor = txtColor,
-             size = size.small)
-
-//=============================================================================
-// DRAWING HELPER
-//=============================================================================
-
-f_drawLevel(
-    line lineRef,
-    int anchorBar,
-    float price,
-    color lineColor) =>
-
-    if not na(lineRef)
-        line.delete(lineRef)
-
-    if na(price) or na(anchorBar)
-        na
-    else
-        line.new(
-            x1 = anchorBar,
-            y1 = price,
-            x2 = bar_index + levelLength,
-            y2 = price,
-            xloc = xloc.bar_index,
-            extend = extend.none,
-            color = lineColor,
-            style = line.style_solid,
-            width = lineWidth)
-//=============================================================================
-// DRAWING ENGINE
-//=============================================================================
-
-//=============================================================================
-// TOUCH ENGINE
-//=============================================================================
-
-if crtState == CRTState.Active
-
-    //---------------------------------------------------------
-    // CR High
-    //---------------------------------------------------------
-
-    if not touchCRHigh
-        touchCRHigh := high >= crHigh
-
-    //---------------------------------------------------------
-    // CE
-    //---------------------------------------------------------
-
-    if not touchCE
-        touchCE := high >= crMid and low <= crMid
-
-    //---------------------------------------------------------
-    // CR Low
-    //---------------------------------------------------------
-
-    if not touchCRLow
-        touchCRLow := low <= crLow
-//---------------------------------------------------------------------
-// CR HIGH
-//---------------------------------------------------------------------
-
-lineCRHigh := f_drawLevel(
-     lineCRHigh,
-     crAnchorBar,
-     crHigh,
-     clrHigh)
-
-if not na(lineCRHigh)
-    line.set_style(lineCRHigh, line.style_solid)
-
-lblCRHigh := f_drawLabel(
-     lblCRHigh,
-     crAnchorBar,
-     crHigh,
-     "CR High",
-     clrHigh)
-
-//---------------------------------------------------------------------
-// CR OPEN
-//---------------------------------------------------------------------
-
-lineCROpen := f_drawLevel(
-     lineCROpen,
-     crAnchorBar,
-     crOpen,
-     clrOpen)
-
-if not na(lineCROpen)
-    line.set_style(lineCROpen, line.style_dotted)
-
-lblCROpen := f_drawLabel(
-     lblCROpen,
-     crAnchorBar,
-     crOpen,
-     "CR Open",
-     clrOpen)
-
-//---------------------------------------------------------------------
-// CE
-//---------------------------------------------------------------------
-
-lineCRMid := f_drawLevel(
-     lineCRMid,
-     crAnchorBar,
-     crMid,
-     clrMid)
-
-if not na(lineCRMid)
-    line.set_style(lineCRMid, line.style_dashed)
-
-lblCRMid := f_drawLabel(
-     lblCRMid,
-     crAnchorBar,
-     crMid,
-     "CE",
-     clrMid)
-
-//---------------------------------------------------------------------
-// CR LOW
-//---------------------------------------------------------------------
-
-lineCRLow := f_drawLevel(
-     lineCRLow,
-     crAnchorBar,
-     crLow,
-     clrLow)
-
-if not na(lineCRLow)
-    line.set_style(lineCRLow, line.style_solid)
-
-lblCRLow := f_drawLabel(
-     lblCRLow,
-     crAnchorBar,
-     crLow,
-     "CR Low",
-     clrLow)
- //---------------------------------------------------------------------
-// PREVIOUS CRT
-//---------------------------------------------------------------------
-
-linePrevCRHigh := f_drawLevel(
-     linePrevCRHigh,
-     prevCRAnchorBar,
-     prevCRHigh,
-     color.gray)
-
-if not na(linePrevCRHigh)
-    line.set_style(linePrevCRHigh, line.style_solid)
-
-linePrevCROpen := f_drawLevel(
-     linePrevCROpen,
-     prevCRAnchorBar,
-     prevCROpen,
-     color.gray)
-
-if not na(linePrevCROpen)
-    line.set_style(linePrevCROpen, line.style_dotted)
-
-linePrevCRMid := f_drawLevel(
-     linePrevCRMid,
-     prevCRAnchorBar,
-     prevCRMid,
-     color.gray)
-
-if not na(linePrevCRMid)
-    line.set_style(linePrevCRMid, line.style_dashed)
-
-linePrevCRLow := f_drawLevel(
-     linePrevCRLow,
-     prevCRAnchorBar,
-     prevCRLow,
-     color.gray)
-
-if not na(linePrevCRLow)
-    line.set_style(linePrevCRLow, line.style_solid)
-
-//=============================================================================
-// TOUCH ENGINE
-//=============================================================================
-
-//---------------------------------------------------------
-// CR High Touch
-//---------------------------------------------------------
-
-if crtState == CRTState.Active and not touchCRHigh
-    if high >= crHigh
-        touchCRHigh := true
-
-//---------------------------------------------------------
-// CE Touch
-//---------------------------------------------------------
-
-if crtState == CRTState.Active and not touchCE
-    if high >= crMid and low <= crMid
-        touchCE := true
-
-//---------------------------------------------------------
-// CR Low Touch
-//---------------------------------------------------------
-
-if crtState == CRTState.Active and not touchCRLow
-    if low <= crLow
-        touchCRLow := true
